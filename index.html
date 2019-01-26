@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  </head>
+  <body>
+    <div id="app" class="console">
+      <div id="consoleOut" class="output">
+        <div id="candy">
+            
+          <span>Initializing...</span><br />
+          <span class="green">0.0002ms ok!</span><br />
+          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == ==</span></br>
+          <pre id="ascii" contenteditable="false">
+    _   __         ____  __                   __    _ __           
+   / | / /___     / __ \/ /___ _________     / /   (_) /_____      
+  /  |/ / __ \   / /_/ / / __ `/ ___/ _ \   / /   / / //_/ _ \     
+ / /|  / /_/ /  / ____/ / /_/ / /__/  __/  / /___/ / ,< /  __/     
+/_/ |_/\____/  /_/   /_/\__,_/\___/\___/  /_____/_/_/|_|\___/      
+              ______  _____   ____     ____     ___           
+             <  /__ \/__  /  / __ \   / __ \   <  /           
+             / /__/ /  / /  / / / /  / / / /   / /            
+            / // __/  / /  / /_/ /  / /_/ /   / /             
+           /_//____/ /_(_)  \___(_)  \___(_) \_/              
+
+          </pre></br>
+          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == ==</span></br>
+          <span>Our home is <span class="red">under attack</span>!</span></br>
+          <span>Please join in and help protect our beloved 127.0.0.1</span>
+        </div>
+        </br>
+        <span class="gray">If <span class="green">your name</span> is mentioned, perform the requested <span class="blue">action</span><br>
+      </div>
+      <div id="actionConsole" class="action">
+        <span>system@home$ </span>
+        <textarea id="command" class="input" name="input" cols="30" rows="1"></textarea>
+      </div>
+      <div id="actionPanel">
+        <div id="enterUsername">
+          <input id="username" type="text" placeholder="username">
+          <button id="submitUsername">Join</button>
+        </div>
+        <div id="idle">
+          IDLE SCREEN
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io();
+      var room = undefined;
+      var isHost = false;
+      var username = undefined;
+
+      let colored = (msg, color) => {
+        var spanmsg = document.createElement("span");
+        spanmsg.classList=color;
+        spanmsg.innerHTML = msg;
+        return spanmsg;
+      };
+
+      let cout = (msg) => {
+        var spanmsg = document.createElement("span");
+        var spanmsgcontainer = document.createElement("span");
+        var prefix = document.createElement("span");
+        prefix.classList="gray";
+        prefix.innerHTML = "</br>system@home$ ";
+        spanmsgcontainer.innerHTML = msg;
+        spanmsg.append(prefix);
+        spanmsg.append(spanmsgcontainer);
+
+        document.getElementById("consoleOut").append(spanmsg);
+      };
+
+      socket.on("joined", id => {
+        console.log("got joined " + id);
+        document.getElementById("candy").style.display = "none";
+        document.getElementById("actionConsole").style.display = "none";
+        document.getElementById("actionPanel").style.display = "block";
+
+        room = io('/' + id);
+        configureRoomJoin(room);
+        document.getElementById("enterUsername").style.display = "block";
+        document.getElementById("enterUsername").onkeydown = o => {
+          var o = o || event;
+          if (o.keyCode == 13) {
+            o.preventDefault();
+            document.getElementById("submitUsername").click();
+          }
+        };
+        document.getElementById("submitUsername").onclick = () => {
+          var val = document.getElementById("username").value;
+          document.getElementById("enterUsername").style.display = "none";
+          username = val;
+          room.emit("joined", username);
+        };
+
+        room.on("joined", uname => {
+          if (uname === username) {
+            document.getElementById("idle").style.display = "block";
+          }
+        })
+        
+        room.on("task", task => {
+          console.log(task);
+        });
+      });
+      socket.on("room", data=>{
+        isHost = true;
+        document.getElementById("ascii").innerHTML = data.ascii;
+        startHost(data.id);
+        cout("join " + colored(data.id, "green").outerHTML);
+      });
+
+      document.getElementById("command").onkeydown = o => {
+          var o = o || event;
+          if (o.keyCode == 13) {
+            o.preventDefault();
+            var val = document.getElementById("command").value;
+            if (val === "create") {
+              socket.emit("createRoom");
+            }
+            if (val.toLowerCase().startsWith("join ")) {
+              val = val.replace("join ", "");
+              val = val.replace("Join ", "");
+              val = val.replace("JOIN ", "");
+              val = val.trim();
+              socket.emit("joinRoom", val);
+            }
+            document.getElementById("command").value = null;
+          }
+        }
+
+      let startHost = (id) => {
+        console.log("got room id: " + id);
+        room = io('/' + id);
+        configureRoomJoin(room);
+        room.on("answerSummary", data => {
+          //
+        });
+      }
+
+      let configureRoomJoin = (room) => {
+        room.on("joined", name => {
+          console.log("user joined " + name); //TODO: actually print
+          cout(colored(name, "green").outerHTML + " joined");
+        });
+      };
+    </script>
+  </body>
+</html>
