@@ -3,10 +3,40 @@
   <head>
     <title>Socket.IO chat</title>
     <link rel="stylesheet" type="text/css" href="/static/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.js"></script>
   </head>
   <body>
     <div id="app" class="console">
+      <div id="actionPanel">
+        <div id="loginPanel">
+          <input id="server" type="text" placeholder="server" />
+          <input id="username" type="text" placeholder="username" />
+          <button id="submitJoin">Join</button>
+        </div>
+        <div id="idle">
+          IDLE SCREEN
+        </div>
+        <button id="buttonAction" class="doAction">+</button>
+        <div id="addNumberAction" class="doAction">
+          <button class="addNumberButton">1</button>
+          <button class="addNumberButton">2</button>
+          <button class="addNumberButton">3</button>
+          <button class="addNumberButton">4</button>
+          <button class="addNumberButton">5</button>
+          <button class="addNumberButton">6</button>
+          <button class="addNumberButton">7</button>
+          <button class="addNumberButton">8</button>
+          <button class="addNumberButton">9</button>
+        </div>
+        <div id="buttonsAction" class="doAction">
+          <button class="buttonsActionButton green">NO</button>
+          <button class="buttonsActionButton red">YES</button>
+        </div>
+      </div>
       <div id="consoleOut" class="output">
+        <div id="clientConsole">
+          <span><span class="blue">system@home$</span> Please join a server</span>
+        </div>
         <div id="candy">
             
           <span>Initializing...</span><br />
@@ -33,17 +63,8 @@
         <span class="gray">If <span class="green">your name</span> is mentioned, perform the requested <span class="blue">action</span><br>
       </div>
       <div id="actionConsole" class="action">
-        <span>system@home$ </span>
+        <span class="blue">system@home$ </span>
         <textarea id="command" class="input" name="input" cols="30" rows="1"></textarea>
-      </div>
-      <div id="actionPanel">
-        <div id="enterUsername">
-          <input id="username" type="text" placeholder="username">
-          <button id="submitUsername">Join</button>
-        </div>
-        <div id="idle">
-          IDLE SCREEN
-        </div>
       </div>
     </div>
 
@@ -51,6 +72,7 @@
     <script>
       var socket = io();
       var room = undefined;
+      var roomId = undefined;
       var isHost = false;
       var username = undefined;
     
@@ -59,9 +81,15 @@
       };
 
       let $ = (el) => document.getElementById(el);
+      let $class = (el, cb) => {
+        var els = document.getElementsByClassName(el);
+        for (var i=0; i<els.length; i++) {
+          cb(els[i]);
+        }
+      }
 
       let ui = {
-        show: (el) => { $(el).style.display = "block"; },
+        show: (el, disp="block") => { $(el).style.display = disp; },
         hide: (el) => { $(el).style.display = "none"; },
         mk: (el) => document.createElement(el)
       };
@@ -113,50 +141,64 @@
 
           configureRoomJoined(room);
 
+          room.emit("joined", username);
+
           room.on("joined", uname => {
             if (uname === username) {
               ui.show("idle");
             }
-          })
+          });
+          room.on("joinError", (msg) => {
+            if (msg === "user") {
+              ui.show("loginPanel");
+              $("username").value = "";
+              $("username").classList = "red";
+              $("username").placeholder = "User exists";
+            }
+          });
 
           room.on("task", task => {
             __d(task);
 
             showTaskUI(task);
           });
+        });
 
-          showJoinUI();
+        socket.on("joinError", (msg) => {
+          __d("joinError: " + msg);
+          if (msg==="room") {
+            ui.show("loginPanel");
+            $("server").value = "";
+            $("server").classList = "red";
+            $("server").placeholder = "no room";
+          }
         });
       }
 
-      let showJoinUI = () => {
-        ui.hide("candy");
-        ui.hide("actionConsole");
-        ui.show("actionPanel");
-        ui.show("enterUsername");
-
-        $("enterUsername").onkeydown = o => {
-          evnt.ifEnter(o, () => {
-            $("submitUsername").click();
-          });
-        };
-        $("submitUsername").onclick = () => {
-          var val = $("username").value;
-          ui.hide("enterUsername");
-          username = val;
-          room.emit("joined", username);
-        };
-      };
 
       let onCommandEnter = o => {
         evnt.ifEnter(o, ()=>{
           var val = $("command").value;
           if (val === "create") {
+            var loop = new Howl({
+              src: ['/static/music_loop.wav'],
+              autoplay: false,
+              loop: true,
+              preload: true,
+              volume: 0.5,
+            })
+            var intro = new Howl({
+              src: ['/static/music_intro.wav'],
+              autoplay: false,
+              loop: false,
+              preload: true,
+              volume: 0.5,
+              onend: function () {
+                loop.play();
+              }
+            });
+            //intro.play();
             socket.emit("createRoom");
-          }
-          else if (val.toLowerCase().startsWith("join ")) {
-            val = val.replace("join ", "").replace("Join ", "").replace("JOIN ", "").trim(); //sanetize
-            socket.emit("joinRoom", val);
           }
           else if (val.toLowerCase().startsWith("attack ")) {
             val = val.replace("attack ", "").trim();
@@ -168,9 +210,14 @@
       }
 
       let showTaskUI = (task) => {
+        __d("show task ui");
+        $class("doAction", (el=>{
+          __d("hide " + el.id);
+          ui.hide(el.id);
+        }));
         if (task.players[0] == "everyone" 
             || task.players.includes(username)) {
-
+          ui.hide("idle");
           switch (task.action) {
             case "crack": showCrack(task); break;
             case "click": showClick(task); break;
@@ -181,6 +228,41 @@
           ui.show("idle"); //make sure it is visible
         }
       }
+
+      let showCrack = (task) => {
+        var idx = task.players.indexOf(username);
+        if (idx == 1) {
+          ui.show("buttonAction");
+          var action = task.modifier === "add" ? "+" : "-";
+          $("buttonAction").innerHTML = action;
+          $("buttonAction").onclick = ()=>{
+            room.emit("answer", {
+              user: username,
+              data: task.modifier
+            });
+          };
+        } else {
+          ui.show("addNumberAction", "grid");
+          $class("addNumberButton", el=>{
+            el.onclick = () => {
+              room.emit("answer", {
+                user: username,
+                data: el.innerHTML
+              });
+            };
+          });
+        }
+      };
+      let showClick = (task) => {
+
+      };
+      let showHold = (task) => {
+
+      };
+      let showCount = (task) => {
+
+      };
+
 
       let colored = (msg, color) => {
         var spanmsg = ui.mk("span");
@@ -193,13 +275,16 @@
         var spanmsg = ui.mk("span");
         var spanmsgcontainer = ui.mk("span");
         var prefix = ui.mk("span");
-        prefix.classList = "gray";
+        prefix.classList = "blue";
         prefix.innerHTML = "</br>system@home$ ";
         spanmsgcontainer.innerHTML = msg;
         spanmsg.append(prefix);
         spanmsg.append(spanmsgcontainer);
-
-        $("consoleOut").append(spanmsg);
+        if (isHost) {
+          $("consoleOut").append(spanmsg);
+        } else {
+          $("consoleOut").prepend(spanmsg);
+        }
       };
 
     
@@ -208,8 +293,18 @@
       // Finally we listen for joined cilents - then for joined clients to our room
       $("command").onkeydown = () => onCommandEnter();
 
+      let configureJoinUI = () => {      
+        $("submitJoin").onclick = () => {
+          roomId = $("server").value;
+          username = $("username").value;
+          socket.emit("joinRoom", roomId);
+          ui.hide("loginPanel");
+        };
+      };
+      configureJoinUI();
       configureGotRoomStartHost(socket);
       configureJoined(socket);
+
     </script>
   </body>
 </html>

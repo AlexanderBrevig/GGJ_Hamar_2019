@@ -6,7 +6,6 @@
 
 html,
 body {
-  height: 100%;
   margin: 0;
   padding: 0;
   font-size: 1.4em;
@@ -28,16 +27,28 @@ body {
 .output span {
   line-height: 1.5em;
 }
-.output span.grey {
+.grey {
   color: #cccccc;
 }
-.output span.green {
+.grey::placeholder {
+  color: #cccccc;
+}
+.green {
   color: #2ecc71;
 }
-.output span.red {
+.green::placeholder {
+  color: #2ecc71;
+}
+.red {
   color: #e74c3c;
 }
-.output span.blue {
+.red::placeholder {
+  color: #e74c3c;
+}
+.blue {
+  color: #3498db;
+}
+.blue::placeholder {
   color: #3498db;
 }
 .output pre {
@@ -72,12 +83,87 @@ body {
 #actionPanel {
   display: none;
 }
-#enterUsername {
+#loginPanel {
   display: none;
 }
 #idle {
   display: none;
 }
+#clientConsole {
+  display: none;
+}
+
+/*
+    Client interface, mobile
+*/
+@media only screen and (max-width: 900px) {
+  #actionPanel {
+    border: 1px solid red;
+    display: block;
+    position: relative;
+    width: 100vw;
+    height: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+  #clientConsole {
+    display: block;
+  }
+  #actionConsole {
+    display: none;
+  }
+
+  button,
+  input {
+    background: #313131;
+    color: #ccc;
+  }
+  #loginPanel {
+    display: block;
+  }
+  #loginPanel button,
+  #loginPanel input {
+    margin: 5vw;
+    width: 90vw;
+    height: 20vw;
+    font-size: 15vw;
+    text-align: center;
+    display: block;
+    font-family: inherit;
+  }
+
+  #buttonAction {
+    display: none;
+    width: 100%;
+    height: 100%;
+    font-size: 100vw;
+    text-align: center;
+  }
+
+  #addNumberAction {
+    display: none; /*grid*/
+    grid-gap: 2vw;
+    grid-template-columns: repeat(3, 31vw);
+  }
+  #addNumberAction button {
+    height: 32vw;
+    font-size: 30vw;
+  }
+
+  #buttonsAction {
+    display: none; /*grid*/
+
+    grid-gap: 2vw;
+  }
+  #buttonsAction button {
+    height: 49vw;
+    font-size: 40vw;
+  }
+  #candy {
+    display: none; /*HACK*/
+  }
+}
+
 @keyframes glitch {
   0% {
     color: white;

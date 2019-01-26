@@ -6,6 +6,8 @@ var art = require("ascii-art");
 
 var namespaces = [];
 var users = [];
+var answers = [];
+var currentTask = [];
 
 let d = msg => {
   console.log(msg);
@@ -43,7 +45,8 @@ function setupCreateRoom(socket) {
     if (namespaces[roomId] === undefined) {
       namespaces[roomId] = io.of("/" + roomId);
       users[roomId] = ["test1", "test3"];
-      setupServerRoom(namespaces, roomId); //TODO refactor
+      currentTask[roomId] = undefined;
+      setupServerRoom(socket, namespaces, roomId); //TODO refactor
     }
     d("room: " + roomId);
     art.font("join      " + roomId, "Doom", rendered => {
@@ -61,26 +64,34 @@ function setupJoinRoom(socket) {
       d("joined: " + id);
       socket.emit("joined", id);
     } else {
-      d("joinError:");
-      socket.emit("joinError", "No such room");
+      d("joinError: room");
+      socket.emit("joinError", "room");
     }
   });
 }
 
-function setupServerRoom(spaces, roomId) {
+function setupServerRoom(socketAll, spaces, roomId) {
   var room = spaces[roomId];
   room.on("connection", socket => {
-    setupRoomJoin(socket, roomId);
+    setupRoomJoin(socketAll, socket, roomId);
     socket.on("task", task => {
       var taskObject = parseTask(task);
+      currentTask[roomId] = taskObject;
       room.emit("task", taskObject);
+    });
+    socket.on("answer", answer => {
+      d(answer);
+      answers.push(answer);
+      if (currentTask[roomId].answers === answers.length) {
+        calculateAnswers();
+      }
     });
     socket.on("disconnect", () => {
       d("user disconnected room");
     });
   });
 
-  function setupRoomJoin(socket, roomId) {
+  function setupRoomJoin(socketAll, socket, roomId) {
     socket.on("joined", user => {
       d(user + " joined room " + roomId);
       if (!users[roomId].includes(user)) {
@@ -88,9 +99,57 @@ function setupServerRoom(spaces, roomId) {
         d(users[roomId]);
         room.emit("joined", user);
       } else {
-        socket.emit("joinError", "User exists");
+        d("joinError: user");
+        socket.emit("joinError", "user");
       }
     });
+  }
+
+  function calculateAnswers() {
+    var didAnswerFail = false;
+    if (currentTask[roomId].action === "crack") {
+      if (answers[1].data !== "add") {
+        didAnswerSucceed(false);
+        didAnswerFail = true;
+      }
+    }
+    if (!didAnswerFail) didAnswerSucceed(true);
+    answers = [];
+    currentTask[roomId] = undefined;
+  }
+
+  function didAnswerSucceed(sux) {
+    var answerStatus = {
+      success: sux,
+      message: "",
+      responsible: "everyone"
+    };
+    if (currentTask[roomId].action === "crack") {
+      if (sux) {
+        answerStatus.message = "Attack defeated by ";
+      } else {
+        answerStatus.message = "Attack failed by ";
+      }
+      answerStatus.responsible = currentTask[roomId].players
+        .map(el => {
+          return "<span class='green'>" + el + "</span>";
+        })
+        .join(" ");
+    } else {
+      if (sux) {
+        answerStatus.message = "Attack defeated by ";
+        answerStatus.responsible = "<span class='green'>everyone</span>";
+      } else {
+        answerStatus.message = "Attack let through by ";
+        answers.forEach(ans => {
+          if (ans.data !== currentTask[roomId].objective) {
+            answerStatus.responsible +=
+              "<span class='green'>" + ans.user + "</span> ";
+          }
+        });
+      }
+    }
+    room.emit("answerSummary", answerStatus);
   }
 
   function parseTask(task) {
@@ -100,10 +159,12 @@ function setupServerRoom(spaces, roomId) {
       action: "",
       objective: "",
       modifier: "",
-      text: ""
+      text: "",
+      answers: users[roomId].length
     };
     task = task.split(" ");
     if (task[0] === "crack") {
+      taskObject.answers = 3;
       taskObject.action = task[0];
       taskObject.players = users[roomId]
         .sort(() => 0.5 - Math.random())
