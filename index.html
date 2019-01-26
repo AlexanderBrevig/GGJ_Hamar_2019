@@ -129,6 +129,12 @@
               val = val.trim();
               socket.emit("joinRoom", val);
             }
+            if (val.toLowerCase().startsWith("attack ")) {
+              val = val.replace("attack ", "");
+              val = val.trim();
+              room.emit("task", val);
+            }
+          
             document.getElementById("command").value = null;
           }
         }
