@@ -53,107 +53,152 @@
       var room = undefined;
       var isHost = false;
       var username = undefined;
+    
+      let __d = msg => {
+        console.log(msg);
+      };
+
+      let $ = (el) => document.getElementById(el);
+
+      let ui = {
+        show: (el) => { $(el).style.display = "block"; },
+        hide: (el) => { $(el).style.display = "none"; },
+        mk: (el) => document.createElement(el)
+      };
+
+      let evnt = {
+        ifEnter: (evnt, thenDo) => {
+          var o = evnt || event;
+          if (o.keyCode == 13) {
+            o.preventDefault();
+            if (thenDo !== undefined) {
+              thenDo();
+            }
+          }
+        }
+      };
+
+      let configureGotRoomStartHost = (socket) => {
+        socket.on("room", data => {
+          isHost = true;
+          // when we get a room, we can start the host
+          startHost(data.id);
+
+          $("ascii").innerHTML = data.ascii;
+          cout("join " + colored(data.id, "green").outerHTML);
+        });
+      };
+    
+      let startHost = (id) => {
+        __d("got room id: " + id);
+        room = io('/' + id);
+        configureRoomJoined(room);
+        room.on("answerSummary", data => {
+          // update UI on host
+        });
+      }
+
+      let configureRoomJoined = (room) => {
+        room.on("joined", name => {
+          __d("user joined " + name); //TODO: actually print
+          cout(colored(name, "green").outerHTML + " joined");
+        });
+      };
+
+      let configureJoined = (socket) => {
+        socket.on("joined", id => {
+          __d("got joined " + id);
+
+          room = io('/' + id);
+
+          configureRoomJoined(room);
+
+          room.on("joined", uname => {
+            if (uname === username) {
+              ui.show("idle");
+            }
+          })
+
+          room.on("task", task => {
+            __d(task);
+
+            showTaskUI(task);
+          });
+
+          showJoinUI();
+        });
+      }
+
+      let showJoinUI = () => {
+        ui.hide("candy");
+        ui.hide("actionConsole");
+        ui.show("actionPanel");
+        ui.show("enterUsername");
+
+        $("enterUsername").onkeydown = o => {
+          evnt.ifEnter(o, () => {
+            $("submitUsername").click();
+          });
+        };
+        $("submitUsername").onclick = () => {
+          var val = $("username").value;
+          ui.hide("enterUsername");
+          username = val;
+          room.emit("joined", username);
+        };
+      };
+
+      let onCommandEnter = o => {
+        evnt.ifEnter(o, ()=>{
+          var val = $("command").value;
+          if (val === "create") {
+            socket.emit("createRoom");
+          }
+          else if (val.toLowerCase().startsWith("join ")) {
+            val = val.replace("join ", "").replace("Join ", "").replace("JOIN ", "").trim(); //sanetize
+            socket.emit("joinRoom", val);
+          }
+          else if (val.toLowerCase().startsWith("attack ")) {
+            val = val.replace("attack ", "").trim();
+            room.emit("task", val);
+          }
+
+          $("command").value = null;
+        });
+      }
+
+      let showTaskUI = (task) => {
+        //TODO:
+      }
 
       let colored = (msg, color) => {
-        var spanmsg = document.createElement("span");
-        spanmsg.classList=color;
+        var spanmsg = ui.mk("span");
+        spanmsg.classList = color;
         spanmsg.innerHTML = msg;
         return spanmsg;
       };
 
       let cout = (msg) => {
-        var spanmsg = document.createElement("span");
-        var spanmsgcontainer = document.createElement("span");
-        var prefix = document.createElement("span");
-        prefix.classList="gray";
+        var spanmsg = ui.mk("span");
+        var spanmsgcontainer = ui.mk("span");
+        var prefix = ui.mk("span");
+        prefix.classList = "gray";
         prefix.innerHTML = "</br>system@home$ ";
         spanmsgcontainer.innerHTML = msg;
         spanmsg.append(prefix);
         spanmsg.append(spanmsgcontainer);
 
-        document.getElementById("consoleOut").append(spanmsg);
+        $("consoleOut").append(spanmsg);
       };
 
-      socket.on("joined", id => {
-        console.log("got joined " + id);
-        document.getElementById("candy").style.display = "none";
-        document.getElementById("actionConsole").style.display = "none";
-        document.getElementById("actionPanel").style.display = "block";
+    
+      // The initial creation request for rooms are done through the console
+      // This means that the next step is to listen for a recieved room
+      // Finally we listen for joined cilents - then for joined clients to our room
+      $("command").onkeydown = () => onCommandEnter();
 
-        room = io('/' + id);
-        configureRoomJoin(room);
-        document.getElementById("enterUsername").style.display = "block";
-        document.getElementById("enterUsername").onkeydown = o => {
-          var o = o || event;
-          if (o.keyCode == 13) {
-            o.preventDefault();
-            document.getElementById("submitUsername").click();
-          }
-        };
-        document.getElementById("submitUsername").onclick = () => {
-          var val = document.getElementById("username").value;
-          document.getElementById("enterUsername").style.display = "none";
-          username = val;
-          room.emit("joined", username);
-        };
-
-        room.on("joined", uname => {
-          if (uname === username) {
-            document.getElementById("idle").style.display = "block";
-          }
-        })
-        
-        room.on("task", task => {
-          console.log(task);
-        });
-      });
-      socket.on("room", data=>{
-        isHost = true;
-        document.getElementById("ascii").innerHTML = data.ascii;
-        startHost(data.id);
-        cout("join " + colored(data.id, "green").outerHTML);
-      });
-
-      document.getElementById("command").onkeydown = o => {
-          var o = o || event;
-          if (o.keyCode == 13) {
-            o.preventDefault();
-            var val = document.getElementById("command").value;
-            if (val === "create") {
-              socket.emit("createRoom");
-            }
-            if (val.toLowerCase().startsWith("join ")) {
-              val = val.replace("join ", "");
-              val = val.replace("Join ", "");
-              val = val.replace("JOIN ", "");
-              val = val.trim();
-              socket.emit("joinRoom", val);
-            }
-            if (val.toLowerCase().startsWith("attack ")) {
-              val = val.replace("attack ", "");
-              val = val.trim();
-              room.emit("task", val);
-            }
-          
-            document.getElementById("command").value = null;
-          }
-        }
-
-      let startHost = (id) => {
-        console.log("got room id: " + id);
-        room = io('/' + id);
-        configureRoomJoin(room);
-        room.on("answerSummary", data => {
-          //
-        });
-      }
-
-      let configureRoomJoin = (room) => {
-        room.on("joined", name => {
-          console.log("user joined " + name); //TODO: actually print
-          cout(colored(name, "green").outerHTML + " joined");
-        });
-      };
+      configureGotRoomStartHost(socket);
+      configureJoined(socket);
     </script>
   </body>
 </html>

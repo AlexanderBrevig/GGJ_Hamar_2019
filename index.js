@@ -42,7 +42,7 @@ function setupCreateRoom(socket) {
       .substring(7);
     if (namespaces[roomId] === undefined) {
       namespaces[roomId] = io.of("/" + roomId);
-      users[roomId] = ["test1", "test2", "test3"];
+      users[roomId] = ["test1", "test3"];
       setupServerRoom(namespaces, roomId); //TODO refactor
     }
     d("room: " + roomId);
