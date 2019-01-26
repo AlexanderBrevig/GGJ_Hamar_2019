@@ -168,7 +168,18 @@
       }
 
       let showTaskUI = (task) => {
-        //TODO:
+        if (task.players[0] == "everyone" 
+            || task.players.includes(username)) {
+
+          switch (task.action) {
+            case "crack": showCrack(task); break;
+            case "click": showClick(task); break;
+            case "hold": showHold(task); break;
+            case "count": showCount(task); break;
+          }
+        } else {
+          ui.show("idle"); //make sure it is visible
+        }
       }
 
       let colored = (msg, color) => {
