@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <title>No Place Like 127.0.0.1</title>
     <link rel="stylesheet" type="text/css" href="/static/style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.js"></script>
   </head>
@@ -14,7 +14,12 @@
           <button id="submitJoin">Join</button>
         </div>
         <div id="idle">
-          IDLE SCREEN
+          <div class="idle-animation">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
         </div>
         <button id="buttonAction" class="doAction">+</button>
         <div id="addNumberAction" class="doAction">
@@ -29,8 +34,8 @@
           <button class="addNumberButton">9</button>
         </div>
         <div id="buttonsAction" class="doAction">
-          <button class="buttonsActionButton green">NO</button>
-          <button class="buttonsActionButton red">YES</button>
+          <button id="buttonsActionButton1" class="buttonsActionButton green">NO</button>
+          <button id="buttonsActionButton2" class="buttonsActionButton red">YES</button>
         </div>
       </div>
       <div id="consoleOut" class="output">
@@ -41,7 +46,7 @@
             
           <span>Initializing...</span><br />
           <span class="green">0.0002ms ok!</span><br />
-          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == ==</span></br>
+          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == == == == ==</span></br>
           <pre id="ascii" contenteditable="false">
     _   __         ____  __                   __    _ __           
    / | / /___     / __ \/ /___ _________     / /   (_) /_____      
@@ -55,16 +60,19 @@
            /_//____/ /_(_)  \___(_)  \___(_) \_/              
 
           </pre></br>
-          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == ==</span></br>
+          <span class="seperator">== == == == == == == == == == == == == == == == == == == == == == == == ==</span></br>
           <span>Our home is <span class="red">under attack</span>!</span></br>
           <span>Please join in and help protect our beloved 127.0.0.1</span>
         </div>
         </br>
         <span class="gray">If <span class="green">your name</span> is mentioned, perform the requested <span class="blue">action</span><br>
-      </div>
-      <div id="actionConsole" class="action">
-        <span class="blue">system@home$ </span>
-        <textarea id="command" class="input" name="input" cols="30" rows="1"></textarea>
+        <div id="actionConsole" class="action">
+          <span class="blue">system@home$ </span>
+          <textarea id="command" class="input" name="input" cols="30" rows="1"></textarea>
+        </div>
+        <div id="consoleoutput">
+
+        </div>
       </div>
     </div>
 
@@ -75,6 +83,10 @@
       var roomId = undefined;
       var isHost = false;
       var username = undefined;
+
+      var testproc = () => {
+
+      };
     
       let __d = msg => {
         console.log(msg);
@@ -120,16 +132,20 @@
       let startHost = (id) => {
         __d("got room id: " + id);
         room = io('/' + id);
-        configureRoomJoined(room);
-        room.on("answerSummary", data => {
-          // update UI on host
-        });
+        configureRoomCallbacks(room);
       }
 
-      let configureRoomJoined = (room) => {
+      let configureRoomCallbacks = (room) => {
         room.on("joined", name => {
           __d("user joined " + name); //TODO: actually print
           cout(colored(name, "green").outerHTML + " joined");
+        });
+        
+        room.on("answerSummary", data => {
+          // update UI on host
+          __d("Data summary:");
+          __d(data);
+          cout(data.message + data.responsible);
         });
       };
 
@@ -139,7 +155,7 @@
 
           room = io('/' + id);
 
-          configureRoomJoined(room);
+          configureRoomCallbacks(room);
 
           room.emit("joined", username);
 
@@ -159,14 +175,24 @@
 
           room.on("task", task => {
             __d(task);
-
+            if (task.action === "crack") {
+              var resp = task.players
+                .map(el => {
+                  return "<span class='green'>" + el + "</span>";
+                })
+                .join(" ");
+              cout(resp + " needs to make the number " + task.objective + " with the correct order of operations!");
+            }
+            if (task.action === "click") {
+              cout("<span class='green'>everyone</span> needs to click " + task.objective + "!");
+            }
             showTaskUI(task);
           });
         });
 
         socket.on("joinError", (msg) => {
           __d("joinError: " + msg);
-          if (msg==="room") {
+          if (msg === "room") {
             ui.show("loginPanel");
             $("server").value = "";
             $("server").classList = "red";
@@ -236,6 +262,8 @@
           var action = task.modifier === "add" ? "+" : "-";
           $("buttonAction").innerHTML = action;
           $("buttonAction").onclick = ()=>{
+            ui.hide("buttonAction");
+            ui.show("idle");
             room.emit("answer", {
               user: username,
               data: task.modifier
@@ -243,26 +271,82 @@
           };
         } else {
           ui.show("addNumberAction", "grid");
+          var number = 1;
           $class("addNumberButton", el=>{
+            el.innerHTML = number;
+            el.style.fontSize = "40vw";
             el.onclick = () => {
+              ui.hide("addNumberAction");
+              ui.show("idle");
               room.emit("answer", {
                 user: username,
                 data: el.innerHTML
               });
             };
+            number++;
           });
         }
       };
+      
       let showClick = (task) => {
-
+        __d("Show click");
+        ui.show("buttonsAction");
+        var index = 0;
+        $class("buttonsActionButton", btn => {
+          btn.innerHTML = task.modifier[index];
+          btn.style.fontSize = "40vw";
+          btn.onclick = () => {
+            room.emit("answer", {
+              user: username,
+              data: btn.innerHTML
+            });
+            ui.hide("buttonsAction");
+            ui.show("idle");
+          };
+          index++;
+        });
       };
+
       let showHold = (task) => {
-
+        ui.show("buttonAction");
+        $("buttonAction").style.fontSize = "20vw";
+        $("buttonAction").innerHTML = "Hold " + task.objective + " sec!";
+        var timeStart = undefined;
+        $("buttonAction").onmousedown = () => {
+          timeStart = new Date();
+        }
+        $("buttonAction").onmouseup = () => {
+          var time = new Date() - timeStart;
+          time /= 1000.0;
+          time += 0.5;
+          room.emit("answer", {
+            user: username,
+            data: time
+          });
+          ui.hide("buttonAction");
+          ui.show("idle");
+        }
       };
+
       let showCount = (task) => {
+        ui.show("buttonsAction");
+        $("buttonsActionButton1").innerHTML = "0";
+        $("buttonsActionButton1").onclick = () => {
+          var clicks = parseInt($("buttonsActionButton1").innerHTML);
+          clicks++;
+          $("buttonsActionButton1").innerHTML = clicks;
+        };
 
+        $("buttonsActionButton2").innerHTML = "OK";
+        $("buttonsActionButton2").onclick = () => {
+          room.emit("answer", {
+            user: username,
+            data: $("buttonsActionButton1").innerHTML
+          });
+          ui.hide("buttonsAction");
+          ui.show("idle");
+        };
       };
-
 
       let colored = (msg, color) => {
         var spanmsg = ui.mk("span");
@@ -280,11 +364,7 @@
         spanmsgcontainer.innerHTML = msg;
         spanmsg.append(prefix);
         spanmsg.append(spanmsgcontainer);
-        if (isHost) {
-          $("consoleOut").append(spanmsg);
-        } else {
-          $("consoleOut").prepend(spanmsg);
-        }
+        $("consoleoutput").prepend(spanmsg);
       };
 
     

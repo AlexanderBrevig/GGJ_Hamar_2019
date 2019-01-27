@@ -44,7 +44,7 @@ function setupCreateRoom(socket) {
       .substring(7);
     if (namespaces[roomId] === undefined) {
       namespaces[roomId] = io.of("/" + roomId);
-      users[roomId] = ["test1", "test3"];
+      users[roomId] = [];
       currentTask[roomId] = undefined;
       setupServerRoom(socket, namespaces, roomId); //TODO refactor
     }
@@ -106,9 +106,64 @@ function setupServerRoom(socketAll, spaces, roomId) {
   }
 
   function calculateAnswers() {
+    d("calculate answers");
+    d(currentTask[roomId]);
+    d(answers);
     var didAnswerFail = false;
     if (currentTask[roomId].action === "crack") {
+      var a = parseInt(answers[0].data);
+      var b = parseInt(answers[2].data);
+      var sumab = a + b;
       if (answers[1].data !== "add") {
+        d("did not find add at 1 " + answers[1].data);
+        didAnswerSucceed(false);
+        didAnswerFail = true;
+      }
+      if (currentTask[roomId].objective != sumab) {
+        d(
+          "did not find sum " + currentTask[roomId].objective + " was " + sumab
+        );
+        didAnswerSucceed(false);
+        didAnswerFail = true;
+      }
+    }
+    if (currentTask[roomId].action === "click") {
+      var allCorrect = true;
+      answers.forEach(ans => {
+        if (ans.data !== currentTask[roomId].objective) {
+          allCorrect = false;
+        }
+      });
+      if (!allCorrect) {
+        didAnswerSucceed(false);
+        didAnswerFail = true;
+      }
+    }
+    if (currentTask[roomId].action === "hold") {
+      var allCorrect = true;
+      var obj = parseInt(currentTask[roomId].objective);
+      var index = 0;
+      answers.forEach(ans => {
+        if (parseInt(ans.data) < obj) {
+          allCorrect = false;
+        }
+      });
+      if (!allCorrect) {
+        didAnswerSucceed(false);
+        didAnswerFail = true;
+      }
+    }
+    if (currentTask[roomId].action === "count") {
+      //TODO: refactor
+      var allCorrect = true;
+      var obj = parseInt(currentTask[roomId].objective);
+      var index = 0;
+      answers.forEach(ans => {
+        if (parseInt(ans.data) !== obj) {
+          allCorrect = false;
+        }
+      });
+      if (!allCorrect) {
         didAnswerSucceed(false);
         didAnswerFail = true;
       }
@@ -127,28 +182,41 @@ function setupServerRoom(socketAll, spaces, roomId) {
     if (currentTask[roomId].action === "crack") {
       if (sux) {
         answerStatus.message = "Attack defeated by ";
+        answerStatus.responsible = currentTask[roomId].players
+          .map(el => {
+            return "<span class='green'>" + el + "</span>";
+          })
+          .join(" ");
       } else {
         answerStatus.message = "Attack failed by ";
+        answerStatus.responsible = currentTask[roomId].players
+          .map(el => {
+            return "<span class='red'>" + el + "</span>";
+          })
+          .join(" ");
       }
-      answerStatus.responsible = currentTask[roomId].players
-        .map(el => {
-          return "<span class='green'>" + el + "</span>";
-        })
-        .join(" ");
     } else {
       if (sux) {
         answerStatus.message = "Attack defeated by ";
         answerStatus.responsible = "<span class='green'>everyone</span>";
       } else {
         answerStatus.message = "Attack let through by ";
+        answerStatus.responsible = "";
         answers.forEach(ans => {
-          if (ans.data !== currentTask[roomId].objective) {
+          if (currentTask[roomId].action === "hold") {
+            if (parseInt(ans.data) < parseInt(currentTask[roomId].objective)) {
+              answerStatus.responsible +=
+                "<span class='red'>" + ans.user + "</span> ";
+            }
+          } else if (ans.data !== currentTask[roomId].objective) {
             answerStatus.responsible +=
-              "<span class='green'>" + ans.user + "</span> ";
+              "<span class='red'>" + ans.user + "</span> ";
           }
         });
       }
     }
+    d("answerSummary");
+    d(answerStatus);
     room.emit("answerSummary", answerStatus);
   }
 
