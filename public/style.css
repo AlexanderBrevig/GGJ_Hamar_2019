@@ -10,8 +10,16 @@ body {
   padding: 0;
   font-size: 1.4em;
   font-family: monospace;
-  background-color: #212121;
+  background-color: #0c0c0c;
   overflow: hidden;
+}
+#app {
+  margin: 1em auto;
+  width: 60%;
+  padding: 1em;
+  background-color: #212121;
+  border: 10px solid #ccc;
+  border-radius: 10px;
 }
 .console {
   position: relative;

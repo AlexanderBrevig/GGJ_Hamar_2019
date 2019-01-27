@@ -32,7 +32,7 @@ io.on("connection", function(socket) {
 
 const PORT = process.env.PORT || 5000;
 http.listen(PORT, () => {
-  d("listening on *:3000");
+  d("listening on *:5000");
 });
 
 /*
