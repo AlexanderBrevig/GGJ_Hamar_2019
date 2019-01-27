@@ -312,10 +312,10 @@
         $("buttonAction").style.fontSize = "20vw";
         $("buttonAction").innerHTML = "Hold " + task.objective + " sec!";
         var timeStart = undefined;
-        $("buttonAction").onmousedown = () => {
+        $("buttonAction").ontouchstart = () => {
           timeStart = new Date();
         }
-        $("buttonAction").onmouseup = () => {
+        $("buttonAction").ontouchend = () => {
           var time = new Date() - timeStart;
           time /= 1000.0;
           time += 0.5;
