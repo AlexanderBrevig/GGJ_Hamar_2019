@@ -130,6 +130,7 @@ function setupServerRoom(socketAll, spaces, roomId) {
     }
     if (currentTask[roomId].action === "click") {
       var allCorrect = true;
+      if (answers.length == 0) allCorrect = false;
       answers.forEach(ans => {
         if (ans.data !== currentTask[roomId].objective) {
           allCorrect = false;
@@ -214,6 +215,17 @@ function setupServerRoom(socketAll, spaces, roomId) {
               "<span class='red'>" + ans.user + "</span> ";
           }
         });
+        users[roomId].forEach(pl => {
+          var found = false;
+          answers.forEach(ans => {
+            if (pl === ans.user) {
+              found = true;
+            }
+          });
+          if (!found) {
+            answerStatus.responsible += "<span class='red'>" + pl + "</span> ";
+          }
+        });
       }
     }
     d("answerSummary");
@@ -223,6 +235,9 @@ function setupServerRoom(socketAll, spaces, roomId) {
 
   function parseTask(task) {
     d("PARSE: " + task);
+    if (task === "cancel") {
+      calculateAnswers();
+    }
     var taskObject = {
       players: ["everyone"],
       action: "",
