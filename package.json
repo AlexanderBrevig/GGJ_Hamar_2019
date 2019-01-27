@@ -1,10 +1,19 @@
 {
-    "name": "ProtectHome",
+    "name": "No Place Like 127.0.0.1",
     "version": "0.0.1",
     "description": "Global Game Jam",
     "dependencies": {
         "ascii-art": "^1.5.0",
         "express": "^4.16.4",
         "socket.io": "^2.2.0"
-    }
+    },
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "node test.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AlexanderBrevig/GGJ_Hamar_2019"
+    },
 }
