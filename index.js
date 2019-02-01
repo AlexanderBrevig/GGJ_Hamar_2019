@@ -6,6 +6,7 @@ var art = require("ascii-art");
 
 var namespaces = [];
 var users = [];
+var canJoin = [];
 var answers = [];
 var currentTask = [];
 
@@ -46,6 +47,7 @@ function setupCreateRoom(socket) {
     if (namespaces[roomId] === undefined) {
       namespaces[roomId] = io.of("/" + roomId);
       users[roomId] = [];
+      canJoin[roomId] = true;
       currentTask[roomId] = undefined;
       setupServerRoom(socket, namespaces, roomId); //TODO refactor
     }
@@ -63,7 +65,12 @@ function setupJoinRoom(socket) {
   socket.on("joinRoom", id => {
     if (namespaces[id] !== undefined) {
       d("joined: " + id);
-      socket.emit("joined", id);
+      if (canJoin[roomId]) {
+        socket.emit("joined", id);
+      } else {
+        d("joinError: closed");
+        socket.emit("joinError", "closed");
+      }
     } else {
       d("joinError: room");
       socket.emit("joinError", "room");
@@ -79,6 +86,9 @@ function setupServerRoom(socketAll, spaces, roomId) {
       var taskObject = parseTask(task);
       currentTask[roomId] = taskObject;
       room.emit("task", taskObject);
+    });
+    socket.on("closeRoom", () =>{
+      canJoin[roomId] = false;
     });
     socket.on("answer", answer => {
       d(answer);

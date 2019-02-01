@@ -192,11 +192,15 @@
 
         socket.on("joinError", (msg) => {
           __d("joinError: " + msg);
+          ui.show("loginPanel");
+          $("server").value = "";
+          $("server").classList = "red";
+          $("server").placeholder = "error";
           if (msg === "room") {
-            ui.show("loginPanel");
-            $("server").value = "";
-            $("server").classList = "red";
             $("server").placeholder = "no room";
+          }
+          if (msg === "closed") {
+            $("server").placeholder = "closed";
           }
         });
       }
@@ -225,6 +229,9 @@
             });
             intro.play();
             socket.emit("createRoom");
+          }
+          else if (val === "close") {
+            socket.emit("closeRoom");
           }
           else if (val.toLowerCase().startsWith("attack ")) {
             val = val.replace("attack ", "").trim();
