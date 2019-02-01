@@ -231,7 +231,7 @@
             socket.emit("createRoom");
           }
           else if (val === "close") {
-            socket.emit("closeRoom");
+            room.emit("closeRoom");
           }
           else if (val.toLowerCase().startsWith("attack ")) {
             val = val.replace("attack ", "").trim();
