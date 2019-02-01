@@ -65,7 +65,7 @@ function setupJoinRoom(socket) {
   socket.on("joinRoom", id => {
     if (namespaces[id] !== undefined) {
       d("joined: " + id);
-      if (canJoin[roomId]) {
+      if (canJoin[id]) {
         socket.emit("joined", id);
       } else {
         d("joinError: closed");
